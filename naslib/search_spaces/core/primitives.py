@@ -523,13 +523,14 @@ class ReLUConvBN(AbstractPrimitive):
     """
     Implementation of ReLU activation, followed by 2d convolution and then 2d batch normalization.
     """
-    def __init__(self, C_in, C_out, kernel_size, stride=1, affine=True, bias=False, track_running_stats=True, **kwargs):
+    def __init__(self, C_in, C_out, kernel_size, stride=1, affine=True, bias=False, track_running_stats=True, padding=None, **kwargs):
         super().__init__(locals())
         self.kernel_size = kernel_size
-        pad = 0 if stride == 1 and kernel_size == 1 else 1
+        if padding is None:
+            padding = 0 if stride == 1 and kernel_size == 1 else 1
         self.op = nn.Sequential(
             nn.ReLU(inplace=False),
-            nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=pad, bias=bias),
+            nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=padding, bias=bias),
             nn.BatchNorm2d(C_out, affine=affine, track_running_stats=track_running_stats),
         )
 
