@@ -109,7 +109,6 @@ class MixedOp(AbstractPrimitive):
     def apply_weights(self, x, weights):
         raise NotImplementedError()
 
-    @abstractmethod
     def forward(self, x, edge_data):
         weights = self.get_weights(edge_data)
 
