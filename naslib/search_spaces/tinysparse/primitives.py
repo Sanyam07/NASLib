@@ -15,15 +15,15 @@ class DestroySignal(AbstractPrimitive):
         self.C_out = C_out
         self.module_type = module_type
         self.fns = {
-            'max': lambda x: torch.max(x)/10,
-            'min': lambda x: torch.min(x)*10,
-            'mean': torch.mean
+            'min': lambda x: torch.min(x, dim=2)[0]*10,
+            'max': lambda x: torch.max(x, dim=2)[0]/10,
+            'mean': lambda x: torch.mean(x, dim=2),
+            'var': lambda x: torch.var(x, dim=2)
         }
         self.downsample = downsample
 
     def _do(self, x, fn):
-        f = fn(x, dim=2)
-        f = f if fn == torch.mean else f[0]
+        f = fn(x)
         return x/x * f.unsqueeze(2)
 
     def _noise(self, x):
@@ -52,14 +52,14 @@ class DestroySignal(AbstractPrimitive):
 
     def forward(self, x, edge):
 
-        if self.type in self.fns.keys():
-            x = self._do(x, self.fns[self.type])
-        elif self.type == 'zero':
+        if self.module_type in self.fns.keys():
+            x = self._do(x, self.fns[self.module_type])
+        elif self.module_type == 'zero':
             x = self._zero(x)
-        elif self.type == 'ones':
+        elif self.module_type == 'ones':
             x = self._ones(x)
         else:
-            x = self._noise(x)
+            raise NotImplementedError(f'Operation type "{self.module_type}" not supported')
 
         x = self._expand(x)
 

@@ -74,12 +74,12 @@ class TinySparseSearchSpace(Graph):
                 Identity() if stride == 1 else FactorizedReduce(C_in, C_out, stride, affine=False),
                 ReLUConvBN(C_in, C_out, 3, padding=1, stride=stride),
                 ReLUConvBN(C_in, C_out, 5, padding=2, stride=stride),
-                DestroySignal(C_out, 'max', stride==2),
                 DestroySignal(C_out, 'min', stride==2),
+                DestroySignal(C_out, 'max', stride==2),
                 DestroySignal(C_out, 'mean', stride==2),
+                DestroySignal(C_out, 'var', stride==2),
                 DestroySignal(C_out, 'zero', stride==2),
                 DestroySignal(C_out, 'ones', stride==2),
-                DestroySignal(C_out, 'noise', stride==2)
             ]
         )
 
