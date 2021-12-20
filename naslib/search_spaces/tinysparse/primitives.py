@@ -15,8 +15,8 @@ class DestroySignal(AbstractPrimitive):
         self.C_out = C_out
         self.module_type = module_type
         self.fns = {
-            'max': torch.max,
-            'min': torch.min,
+            'max': lambda x: torch.max(x)/10,
+            'min': lambda x: torch.min(x)*10,
             'mean': torch.mean
         }
         self.downsample = downsample
@@ -27,7 +27,7 @@ class DestroySignal(AbstractPrimitive):
         return x/x * f.unsqueeze(2)
 
     def _noise(self, x):
-        return x/x * torch.randn_like(x)
+        return x/x * torch.randn_like(x)/10
 
     def _expand(self, x):
         n_channels = x.shape[-3]
