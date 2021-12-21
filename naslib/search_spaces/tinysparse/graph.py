@@ -1,3 +1,5 @@
+import torch
+
 from copy import deepcopy
 from torch.nn.modules.flatten import Flatten
 from torch.nn.modules.linear import Linear
@@ -91,3 +93,27 @@ class TinySparseSearchSpace(Graph):
         cell.add_edge(1, 2)
     
         return cell
+
+    def set_arch_weights_for_model(self, compact):
+        ops = ['id', 'conv3x3', 'conv5x5', 'min', 'max', 'mean', 'var', 'zero', 'ones']
+
+        n_nodes = len(self.nodes)
+        cells = []
+
+        for i in range(1, n_nodes+1):
+            if 'subgraph' in self.nodes[i] and 'cell_' in self.nodes[i]['subgraph'].name:
+                cells.append(self.nodes[i]['subgraph'])
+
+        assert len(compact) == len(cells), 'Number of cells in the graph and the compact representation do not match'
+
+        for op, cell in zip(compact, cells):
+            alpha = cell.edges[1, 2]['alpha']
+            new_alpha = torch.zeros_like(alpha)
+            new_alpha[ops.index(op)] = 1.0
+
+            with torch.no_grad():
+                for i in range(len(alpha)):
+                    new_weight = 1 if i == ops.index(op) else 0
+                    cell.edges[1, 2]['alpha'][i] = new_weight
+
+            print('Alphas', cell.edges[1, 2]['alpha'])
