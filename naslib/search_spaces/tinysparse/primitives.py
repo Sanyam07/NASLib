@@ -21,13 +21,14 @@ class DestroySignal(AbstractPrimitive):
             'var': lambda x: torch.var(x, dim=2)
         }
         self.downsample = downsample
+        self.epsilon = 10e-5
 
     def _do(self, x, fn):
         f = fn(x)
-        return x/x * f.unsqueeze(2)
+        return x/(x + self.epsilon) * f.unsqueeze(2)
 
     def _noise(self, x):
-        return x/x * torch.randn_like(x)/10
+        return x/(x + self.epsilon) * torch.randn_like(x)/10
 
     def _expand(self, x):
         n_channels = x.shape[-3]
@@ -44,13 +45,13 @@ class DestroySignal(AbstractPrimitive):
         return x * torch.zeros_like(x)
 
     def _ones(self, x):
-        return x/x
+        return x/(x + self.epsilon)
 
     def _downsample(self, x):
         h, w = x.shape[-2], x.shape[-1]
         return x[:, :, :h//2, :w//2] # TODO: Replace with proper calculations of output size from stride and padding
 
-    def forward(self, x, edge):
+    def forward(self, x, edge_data):
 
         if self.module_type in self.fns.keys():
             x = self._do(x, self.fns[self.module_type])
