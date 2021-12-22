@@ -21,9 +21,10 @@ class TinySparseSearchSpace(Graph):
         'n_stage_3'
     ]
 
-    def __init__(self):
+    def __init__(self, destroy_signal_ops=('min', 'max', 'mean', 'var', 'zero', 'ones')):
         super().__init__()
         self.num_classes = 10
+        self.destroy_signal_ops = destroy_signal_ops
         self._create_macro_graph()
 
     def _create_macro_graph(self):
@@ -70,19 +71,17 @@ class TinySparseSearchSpace(Graph):
         )
 
     def _set_cell_op(self, edge, C_in, C_out, stride):
+        destroy_signal_modules = [
+            DestroySignal(C_out, op, stride==2) for op in self.destroy_signal_ops
+        ]
+
         edge.data.set(
             'op',
             [
                 Identity() if stride == 1 else FactorizedReduce(C_in, C_out, stride, affine=False),
                 ReLUConvBN(C_in, C_out, 3, padding=1, stride=stride),
                 ReLUConvBN(C_in, C_out, 5, padding=2, stride=stride),
-                DestroySignal(C_out, 'min', stride==2),
-                DestroySignal(C_out, 'max', stride==2),
-                DestroySignal(C_out, 'mean', stride==2),
-                DestroySignal(C_out, 'var', stride==2),
-                DestroySignal(C_out, 'zero', stride==2),
-                DestroySignal(C_out, 'ones', stride==2),
-            ]
+            ] + destroy_signal_modules
         )
 
     def _create_cell(self):
