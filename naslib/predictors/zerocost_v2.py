@@ -17,6 +17,7 @@ import math
 from naslib.search_spaces.transbench101.loss import SoftmaxCrossEntropyWithLogits
 from naslib.predictors.predictor import Predictor
 from naslib.utils.utils import get_project_root, get_train_val_loaders
+from naslib.predictors.utils.build_nets import get_cell_based_tiny_net
 from naslib.predictors.utils.models.build_darts_net import NetworkCIFAR
 from naslib.predictors.utils.models import nasbench2 as nas201_arch
 from naslib.predictors.utils.models import nasbench1 as nas101_arch
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 class ZeroCostV2(Predictor):
-    def __init__(self, config, batch_size=64, method_type="jacov"):
+    def __init__(self, config, batch_size=64, method_type="jacov", use_naslib_graph=False):
         # available zero-cost method types: 'jacov', 'snip', 'synflow', 'grad_norm', 'fisher', 'grasp'
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
@@ -46,6 +47,8 @@ class ZeroCostV2(Predictor):
         if self.config.dataset in num_classes_dic:
             self.num_classes = num_classes_dic[self.config.dataset]
 
+        self.use_naslib_graph = use_naslib_graph
+
     def pre_process(self):
         self.train_loader, _, _, _, _ = get_train_val_loaders(self.config, mode="train")
 
@@ -56,8 +59,17 @@ class ZeroCostV2(Predictor):
         for test_arch in xtest:
             count += 1
             logger.info("zero cost: {} of {}".format(count, len(xtest)))
-            
-            if "nasbench201" in self.config.search_space:
+
+            if self.use_naslib_graph:
+
+                test_arch.prepare_discretization()
+                test_arch.prepare_evaluation()
+                test_arch.parse()
+
+                network = test_arch
+                logger.info('Parsed architecture')
+
+            elif "nasbench201" in self.config.search_space:
                 ops_to_nb201 = {
                     "AvgPool1x1": "avg_pool_3x3",
                     "ReLUConvBN1x1": "nor_conv_1x1",
@@ -83,26 +95,14 @@ class ZeroCostV2(Predictor):
                     "arch_str": arch_str,
                     "num_classes": self.num_classes,
                 }
-                network = nas201_arch.get_model_from_arch_str(
-                    arch_str, self.num_classes
-                )  # create the network from configuration
-                # zero-cost-proxy author has the following checking lines (which I think might be optional)
-                arch_str2 = nas201_arch.get_arch_str_from_model(network)
-                if arch_str != arch_str2:
-                    print(
-                        f"Value Error: orig_arch={arch_str}, convert_arch={arch_str2}"
-                    )
-                    measure_score = -10e8
-                    return measure_score
-                
-            
 
+                network = get_cell_based_tiny_net(arch_config)
             elif "darts" in self.config.search_space:
                 test_genotype = convert_compact_to_genotype(test_arch.compact)
                 arch_config = {
                     "name": "darts",
-                    "C": 32,
-                    "layers": 8,
+                    "C": 36,
+                    "layers": 20,
                     "genotype": test_genotype,
                     "num_classes": self.num_classes,
                     "auxiliary": False,
@@ -121,14 +121,7 @@ class ZeroCostV2(Predictor):
                     num_classes=self.num_classes,
                 )
             else:
-                """
-                note: parsing the NASLib object creates the nn.Module.
-                Technically we can do this for nb101 / 201 / darts as well,
-                but are keeping the original code above for consistency.
-                """
-                test_arch.parse()
-                network = test_arch
-                logger.info('Parsed architecture')
+                raise NotImplementedError(f"No implementation found for {self.config.search_space}")
 
             # set up loss function
             if self.config.dataset in ['class_object', 'class_scene']:
@@ -172,6 +165,7 @@ class ZeroCostV2(Predictor):
                         loss_fn=loss_fn,
                         measure_names=[self.method_type],
                     )
+
             except: # useful when launching bash scripts
                 print('find_measures failed')
                 score = -1e8

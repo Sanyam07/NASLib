@@ -302,23 +302,23 @@ class DartsSearchSpace(Graph):
 
         # Taken from DARTS implementation
         # assuming input size 8x8
-        self.edges[23, 24].set(
-            "op",
-            ops.Sequential(
-                nn.ReLU(inplace=True),
-                nn.AvgPool2d(
-                    5, stride=3, padding=0, count_include_pad=False
-                ),  # image size = 2 x 2
-                nn.Conv2d(self.channels[-1] * self.num_in_edges, 128, 1, bias=False),
-                nn.BatchNorm2d(128),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(128, 768, 2, bias=False),
-                nn.BatchNorm2d(768),
-                nn.ReLU(inplace=True),
-                nn.Flatten(),
-                nn.Linear(768, self.num_classes),
-            ),
-        )
+        # self.edges[23, 24].set(
+        #     "op",
+        #     ops.Sequential(
+        #         nn.ReLU(inplace=True),
+        #         nn.AvgPool2d(
+        #             5, stride=3, padding=0, count_include_pad=False
+        #         ),  # image size = 2 x 2
+        #         nn.Conv2d(self.channels[-1] * self.num_in_edges, 128, 1, bias=False),
+        #         nn.BatchNorm2d(128),
+        #         nn.ReLU(inplace=True),
+        #         nn.Conv2d(128, 768, 2, bias=False),
+        #         nn.BatchNorm2d(768),
+        #         nn.ReLU(inplace=True),
+        #         nn.Flatten(),
+        #         nn.Linear(768, self.num_classes),
+        #     ),
+        # )
 
         self.update_edges(
             update_func=_double_channels,
